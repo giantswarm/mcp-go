@@ -23,10 +23,11 @@ carried patch rebased onto it or dropped once upstream contains it.
 
 ## Consumers
 
-muster takes the line through a `replace` directive, keeping upstream's module path in its `require`:
+muster takes the line through a `replace` directive, keeping upstream's module path and release in its `require`,
+pinned to a commit of `giantswarm` by its pseudo-version:
 
 ```
-replace github.com/mark3labs/mcp-go => github.com/giantswarm/mcp-go v1.1.2
+replace github.com/mark3labs/mcp-go => github.com/giantswarm/mcp-go v1.1.2-0.<date>-<commit>
 ```
 
 The module path in `go.mod` stays `github.com/mark3labs/mcp-go`, so the line is only usable through `replace`.
@@ -34,9 +35,10 @@ The `replace` goes away, and this line retires, at the first upstream release th
 
 ## Releases
 
-The auto-release workflow tags every conventional merge to `giantswarm`, counted from the highest stable tag (the
-pin's upstream tag, then the line's own). The tag is the release: a Go module needs no build or publish step.
-Versions stay on upstream's major (`v1`), since a Go module's major is part of its import path.
+None. A Go module needs no build or publish step, and a pseudo-version names exactly the commit of the protected
+`giantswarm` branch a consumer runs, so the line cuts no tags of its own (an own tag would sit in upstream's `v1`
+version space, since a module's major is part of its import path). The `v1.1.1` tag is upstream's, kept for
+`git describe`.
 
 ## Carried patches
 
