@@ -12,7 +12,7 @@ and the upstream review queue [giantswarm/giantswarm#37742](https://github.com/g
 
 | Branch | What it is |
 |---|---|
-| `giantswarm` (default) | **The line**: the upstream release tag muster runs ("the pin") + the carried patches + this fork's own files (`FORK.md`, `renovate.json5`). Every change is a pull request against it. |
+| `giantswarm` (default) | **The line**: the upstream release tag muster runs ("the pin") + the carried patches + this fork's own files (`FORK.md`, `renovate.json5`, and upstream's `release.yml` and `pages.yml` workflows removed: the line's auto-release creates its releases, and the line publishes no site). Every change is a pull request against it. |
 | `main` | upstream `main` at the time of the fork; not consumed, not synced. |
 | `fork/<topic>` | pull-request branches against `giantswarm` |
 
