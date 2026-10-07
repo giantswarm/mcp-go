@@ -695,6 +695,15 @@ func (c *StreamableHTTP) sendHTTP(
 	acceptType string,
 	header http.Header,
 ) (resp *http.Response, err error) {
+	// The request runs under a context of its own, which closing the response
+	// body releases; see wrapResponseBody.
+	ctx, cancel := context.WithCancel(ctx)
+	defer func() {
+		if err != nil {
+			cancel()
+		}
+	}()
+
 	// Create HTTP request
 	req, err := http.NewRequestWithContext(ctx, method, c.serverURL.String(), body)
 	if err != nil {
@@ -767,6 +776,7 @@ func (c *StreamableHTTP) sendHTTP(
 		return nil, ErrSessionTerminated
 	}
 
+	wrapResponseBody(resp, cancel)
 	return resp, nil
 }
 
