@@ -22,13 +22,15 @@ class ConformanceRunnerError(RuntimeError):
 def read_server_baseline(path: Path) -> list[str]:
     scenarios = []
     in_server = False
+    seen_server = False
     for line in path.read_text(encoding="utf-8").splitlines():
         if line and not line[0].isspace():
-            in_server = line.strip() == "server:"
+            in_server = line.strip() in ("server:", "server: []")
+            seen_server = seen_server or in_server
         elif in_server and line.strip().startswith("- "):
             scenarios.append(line.strip()[2:])
-    if not scenarios:
-        raise ValueError(f"no server scenarios found in {path}")
+    if not seen_server:
+        raise ValueError(f"no server baseline found in {path}")
     return scenarios
 
 
