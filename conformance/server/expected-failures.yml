@@ -1,0 +1,6 @@
+# Scenarios the conformance checker expects to fail on this line. The line
+# carries the notification fixes upstream's main still lacks (FORK.md), so the
+# intermittent notification scenarios pass here; the checker fails the job when
+# a listed scenario passes ten times in a row, so the list stays empty until a
+# scenario fails on the line itself.
+server: []
