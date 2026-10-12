@@ -198,6 +198,10 @@ type SSEServer struct {
 	// connections. See WithSSEDisableLocalhostProtection.
 	disableLocalhostProtection bool
 
+	// maxRequestBodyBytes bounds a message POST body. See
+	// WithSSEMaxRequestBodyBytes.
+	maxRequestBodyBytes int64
+
 	mu sync.RWMutex
 }
 
@@ -314,6 +318,16 @@ func WithKeepAlive(keepAlive bool) SSEOption {
 	}
 }
 
+// WithSSEMaxRequestBodyBytes bounds the size of a message POST body the
+// server reads. A larger body is refused with 413 Request Entity Too Large
+// before it is read in full. Zero or a negative value removes the bound. The
+// default is DefaultMaxRequestBodyBytes.
+func WithSSEMaxRequestBodyBytes(limit int64) SSEOption {
+	return func(s *SSEServer) {
+		s.maxRequestBodyBytes = limit
+	}
+}
+
 // WithSSEProtectedResourceMetadata configures the SSEServer to serve OAuth
 // 2.0 Protected Resource Metadata (RFC 9728) at the well-known endpoint
 // derived from the configured Resource (see ProtectedResourceMetadataPath).
@@ -411,6 +425,7 @@ func NewSSEServer(server *MCPServer, opts ...SSEOption) *SSEServer {
 		useFullURLForMessageEndpoint: true,
 		keepAlive:                    false,
 		keepAliveInterval:            10 * time.Second,
+		maxRequestBodyBytes:          DefaultMaxRequestBodyBytes,
 		sessionIDGenFunc: func(ctx context.Context, r *http.Request) (string, error) {
 			return uuid.New().String(), nil
 		},
@@ -657,7 +672,13 @@ func (s *SSEServer) handleMessage(w http.ResponseWriter, r *http.Request) {
 
 	// Parse message as raw JSON
 	var rawMessage json.RawMessage
-	if err := json.NewDecoder(r.Body).Decode(&rawMessage); err != nil {
+	if err := json.NewDecoder(limitRequestBody(w, r, s.maxRequestBodyBytes)).Decode(&rawMessage); err != nil {
+		if isRequestBodyTooLarge(err) {
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusRequestEntityTooLarge)
+			_ = json.NewEncoder(w).Encode(createErrorResponse(nil, mcp.INVALID_REQUEST, "request body too large"))
+			return
+		}
 		s.writeJSONRPCError(w, nil, mcp.PARSE_ERROR, "Parse error")
 		return
 	}

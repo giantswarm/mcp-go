@@ -120,6 +120,20 @@ func WithEventStore(store EventStore) StreamableHTTPOption {
 	}
 }
 
+// DefaultMaxRequestBodyBytes is the largest POST body the Streamable HTTP
+// and SSE servers read by default, 4 MiB.
+const DefaultMaxRequestBodyBytes int64 = 4 << 20
+
+// WithMaxRequestBodyBytes bounds the size of a POST body the server reads.
+// A larger body is refused with 413 Request Entity Too Large before it is
+// read in full. Zero or a negative value removes the bound. The default is
+// DefaultMaxRequestBodyBytes.
+func WithMaxRequestBodyBytes(limit int64) StreamableHTTPOption {
+	return func(s *StreamableHTTPServer) {
+		s.maxRequestBodyBytes = limit
+	}
+}
+
 // WithDisableStreaming prevents the server from responding to GET requests with
 // a streaming response. Instead, it will respond with a 405 Method Not Allowed status.
 // This can be useful in scenarios where streaming is not desired or supported.
@@ -304,6 +318,7 @@ type StreamableHTTPServer struct {
 	logger                   *slog.Logger
 	sessionLogLevels         *sessionLogLevelsStore
 	disableStreaming         bool
+	maxRequestBodyBytes      int64
 
 	// disableLocalhostProtection, when true, turns off the automatic DNS
 	// rebinding protection applied to requests arriving over loopback
@@ -345,6 +360,7 @@ func NewStreamableHTTPServer(server *MCPServer, opts ...StreamableHTTPOption) *S
 		logger:                   slog.Default(),
 		sessionResources:         newSessionResourcesStore(),
 		sessionResourceTemplates: newSessionResourceTemplatesStore(),
+		maxRequestBodyBytes:      DefaultMaxRequestBodyBytes,
 	}
 
 	// Apply all options
@@ -407,7 +423,7 @@ func (s *StreamableHTTPServer) ServeHTTP(w http.ResponseWriter, r *http.Request)
 	var body []byte
 	var bodyErr error
 	if r.Method == http.MethodPost && r.Body != nil {
-		body, bodyErr = io.ReadAll(r.Body)
+		body, bodyErr = io.ReadAll(limitRequestBody(w, r, s.maxRequestBodyBytes))
 	}
 
 	hr := &HTTPRequest{
@@ -421,6 +437,10 @@ func (s *StreamableHTTPServer) ServeHTTP(w http.ResponseWriter, r *http.Request)
 	hw := newHTTPResponseWriterAdapter(w)
 
 	if bodyErr != nil && r.Method == http.MethodPost {
+		if isRequestBodyTooLarge(bodyErr) {
+			s.writeJSONRPCErrorStatus(hw, nil, mcp.INVALID_REQUEST, "request body too large", http.StatusRequestEntityTooLarge)
+			return
+		}
 		s.writeJSONRPCError(hw, nil, mcp.PARSE_ERROR, fmt.Sprintf("read request body error: %v", bodyErr))
 		return
 	}
