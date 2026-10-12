@@ -5,8 +5,9 @@ This repository is Team Bumblebee's fork of [mark3labs/mcp-go](https://github.co
 upstream releases them, and answers one question from one place: **which mcp-go does muster run, and why does it
 differ from upstream?**
 
-Tracking (this fork has issues disabled): [giantswarm/muster#1405](https://github.com/giantswarm/muster/issues/1405)
-and the upstream review queue [giantswarm/giantswarm#37742](https://github.com/giantswarm/giantswarm/issues/37742).
+Tracking (this fork has issues disabled): [giantswarm/muster#1405](https://github.com/giantswarm/muster/issues/1405).
+A carried patch whose ledger file says "to be sent" is reviewed by the team before it goes upstream as a pull
+request against mark3labs/mcp-go; its ledger file then names that pull request.
 
 ## Branches
 
