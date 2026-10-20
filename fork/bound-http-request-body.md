@@ -1,7 +1,7 @@
 # Bound the POST body the HTTP transports read
 
 - **Status:** carried
-- **Upstream:** none yet; to be sent. mcp-go through v1.2.1 is affected by CVE-2026-108859 and no upstream release fixes it
+- **Upstream:** none yet; to be sent. mcp-go through v1.3.0 is affected by CVE-2026-108859 and no upstream release fixes it
 - **Our commit:** the squash commit of this change on `giantswarm`; the code is the upstream-ready commit `fix(server): bound the POST body the HTTP transports read`
 
 ## Change

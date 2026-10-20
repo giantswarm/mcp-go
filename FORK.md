@@ -22,7 +22,7 @@ opened one, its ledger file names that pull request.
 
 ## Pin
 
-Upstream **v1.2.1** (`90d247ed`, 2026-10-09). The line moves to the next upstream release muster takes, with every
+Upstream **v1.3.0** (`e1bd0abd`, 2026-10-14). The line moves to the next upstream release muster takes, with every
 carried patch kept in effect on it or dropped once upstream contains it.
 
 ## Moving the pin
@@ -42,7 +42,7 @@ muster takes the line through a `replace` directive, keeping upstream's module p
 pinned to a commit of `giantswarm` by its pseudo-version:
 
 ```
-replace github.com/mark3labs/mcp-go v1.2.1 => github.com/giantswarm/mcp-go v1.1.2-0.<date>-<commit>
+replace github.com/mark3labs/mcp-go v1.3.0 => github.com/giantswarm/mcp-go v1.1.2-0.<date>-<commit>
 ```
 
 The module path in `go.mod` stays `github.com/mark3labs/mcp-go`, so the line is only usable through `replace`.
