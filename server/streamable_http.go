@@ -810,6 +810,7 @@ func (s *StreamableHTTPServer) handlePost(w HTTPResponseWriter, r *HTTPRequest) 
 	// GET stream after the response it belongs to.
 	var scopedRequests chan mcp.JSONRPCRequest
 	var scopedNotifications chan mcp.JSONRPCNotification
+	closeDone := func() { close(done) }
 	if canStream && !era.modern {
 		scopedRequests = make(chan mcp.JSONRPCRequest, 8)
 		scopedNotifications = make(chan mcp.JSONRPCNotification, 100)
@@ -830,12 +831,15 @@ func (s *StreamableHTTPServer) handlePost(w HTTPResponseWriter, r *HTTPRequest) 
 				s.activeSessions.CompareAndDelete(sessionID, session)
 			}
 		}()
-		ctx = context.WithValue(ctx, requestScopedSSEKey{}, &requestScopedSSE{
+		scoped := &requestScopedSSE{
+			session:       session,
 			requests:      scopedRequests,
 			notifications: scopedNotifications,
 			done:          done,
 			register:      register,
-		})
+		}
+		closeDone = scoped.close
+		ctx = context.WithValue(ctx, requestScopedSSEKey{}, scoped)
 	}
 
 	go func() {
@@ -940,40 +944,8 @@ func (s *StreamableHTTPServer) handlePost(w HTTPResponseWriter, r *HTTPRequest) 
 		// Stop broadcasts before draining what is already queued.
 		s.server.unregisterListenSession(session)
 	}
-	if response == nil {
-		// Await the forwarder here too. It may be holding a notification it
-		// took off the channel but has not yet written; letting this path
-		// return first would either lose that notification or let the
-		// forwarder write to a ResponseWriter whose handler has already
-		// returned. Waiting settles both. If the forwarder does deliver, it
-		// sets upgradedHeader and this path correctly skips the 202.
-		close(done)
-		<-forwarderExited
-		mu.Lock()
-		if !upgradedHeader {
-			mu.Unlock()
-			w.WriteHeader(http.StatusAccepted)
-		} else {
-			mu.Unlock()
-		}
-		return
-	}
-
-	// Write response
-	//
-	// Stop the forwarder and wait for it to exit before draining, so that
-	// exactly one consumer handles whatever notifications remain and their
-	// order ahead of the response is preserved.
-	//
-	// The wait is not an event-store concern. The forwarder takes a
-	// notification off the channel and THEN acquires mu; if the response path
-	// were to drain and close done in between, that notification would be
-	// stranded in the forwarder's local variable, where the drain loop cannot
-	// see it. Awaiting the forwarder is what makes delivery deterministic.
-	close(done)
-	<-forwarderExited
-	mu.Lock()
-
+	// drain writes a notification left queued once the forwarder has exited.
+	// Callers must hold mu.
 	drain := func(nt mcp.JSONRPCNotification) {
 		if listening {
 			nt = tagSubscription(nt, requestID)
@@ -998,6 +970,51 @@ func (s *StreamableHTTPServer) handlePost(w HTTPResponseWriter, r *HTTPRequest) 
 		}
 		w.Flush()
 	}
+
+	if response == nil {
+		// Await the forwarder here too. It may be holding a notification it
+		// took off the channel but has not yet written; letting this path
+		// return first would either lose that notification or let the
+		// forwarder write to a ResponseWriter whose handler has already
+		// returned. Waiting settles both. If the forwarder does deliver, it
+		// sets upgradedHeader and this path correctly skips the 202.
+		closeDone()
+		<-forwarderExited
+		mu.Lock()
+		// Notifications queued for this POST by the handler have no other
+		// consumer once the forwarder has exited.
+	scopedDrain:
+		for {
+			select {
+			case nt := <-scopedNotifications:
+				drain(nt)
+			default:
+				break scopedDrain
+			}
+		}
+		if !upgradedHeader {
+			mu.Unlock()
+			w.WriteHeader(http.StatusAccepted)
+		} else {
+			mu.Unlock()
+		}
+		return
+	}
+
+	// Write response
+	//
+	// Stop the forwarder and wait for it to exit before draining, so that
+	// exactly one consumer handles whatever notifications remain and their
+	// order ahead of the response is preserved.
+	//
+	// The wait is not an event-store concern. The forwarder takes a
+	// notification off the channel and THEN acquires mu; if the response path
+	// were to drain and close done in between, that notification would be
+	// stranded in the forwarder's local variable, where the drain loop cannot
+	// see it. Awaiting the forwarder is what makes delivery deterministic.
+	closeDone()
+	<-forwarderExited
+	mu.Lock()
 
 drainLoop:
 	for {
@@ -1775,10 +1792,25 @@ type requestScopedSSEKey struct{}
 // message is being handled be written to that POST's SSE response instead of
 // the standalone GET stream.
 type requestScopedSSE struct {
+	// session is the session the POST serves; only messages addressed to it
+	// take the POST's stream.
+	session       ClientSession
 	requests      chan<- mcp.JSONRPCRequest
 	notifications chan<- mcp.JSONRPCNotification
-	done          <-chan struct{}
+	done          chan struct{}
 	register      func()
+
+	// sendMu orders sends against close: a send that starts before close is
+	// queued before done closes, and one that starts after sees done closed,
+	// so nothing is queued once the POST has drained its channels.
+	sendMu sync.Mutex
+}
+
+// close marks the POST stream finished.
+func (r *requestScopedSSE) close() {
+	r.sendMu.Lock()
+	defer r.sendMu.Unlock()
+	close(r.done)
 }
 
 // trySend queues the request for the originating POST stream. It reports
@@ -1794,6 +1826,8 @@ func (r *requestScopedSSE) trySend(ctx context.Context, request mcp.JSONRPCReque
 	default:
 	}
 	r.register()
+	r.sendMu.Lock()
+	defer r.sendMu.Unlock()
 	return sendWhileOpen(ctx, r.done, r.requests, request)
 }
 
@@ -1801,6 +1835,8 @@ func (r *requestScopedSSE) trySend(ctx context.Context, request mcp.JSONRPCReque
 // stream, with the same semantics as trySend. A notification needs no
 // registration: nothing answers it.
 func (r *requestScopedSSE) trySendNotification(ctx context.Context, notification mcp.JSONRPCNotification) bool {
+	r.sendMu.Lock()
+	defer r.sendMu.Unlock()
 	return sendWhileOpen(ctx, r.done, r.notifications, notification)
 }
 
