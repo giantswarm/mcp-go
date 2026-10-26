@@ -368,9 +368,10 @@ func (s *MCPServer) sendNotificationCore(
 	if sessionWithStreamableHTTPConfig, ok := session.(SessionWithStreamableHTTPConfig); ok {
 		sessionWithStreamableHTTPConfig.UpgradeToSSEWhenReceiveNotification()
 	}
-	// A notification sent while a streamable HTTP POST is being handled goes
-	// out on that POST's stream, ahead of the response it relates to.
-	if scoped, ok := ctx.Value(requestScopedSSEKey{}).(*requestScopedSSE); ok && scoped.trySendNotification(ctx, notification) {
+	// A notification sent to the session a streamable HTTP POST is serving,
+	// while that POST is being handled, goes out on its stream, ahead of the
+	// response it relates to.
+	if scoped, ok := ctx.Value(requestScopedSSEKey{}).(*requestScopedSSE); ok && scoped.session == session && scoped.trySendNotification(ctx, notification) {
 		return nil
 	}
 	select {
