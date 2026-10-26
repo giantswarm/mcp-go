@@ -1,6 +1,3 @@
-# Scenarios the conformance checker expects to fail on this line. The line
-# carries the notification fixes upstream's main still lacks (FORK.md), so the
-# intermittent notification scenarios pass here; the checker fails the job when
-# a listed scenario passes ten times in a row, so the list stays empty until a
-# scenario fails on the line itself.
-server: []
+# No known intermittent failures; every conformance scenario must pass.
+# Scenarios excluded here are retried ten times and fail the check once they
+# consistently pass, so keep this file empty while the suite is honest.

@@ -1,8 +1,8 @@
 # Stop dropping notifications when no event store is configured
 
-- **Status:** carried
-- **Upstream:** [mark3labs/mcp-go#969](https://github.com/mark3labs/mcp-go/pull/969), closed unmerged on 2026-10-07; to be re-sent
-- **Our commit:** `62d6b0c` (giantswarm/mcp-go#2)
+- **Status:** dropped
+- **Upstream:** [mark3labs/mcp-go#1097](https://github.com/mark3labs/mcp-go/pull/1097), merged and released in v1.4.0 (supersedes the closed [mark3labs/mcp-go#969](https://github.com/mark3labs/mcp-go/pull/969))
+- **Our commit:** `62d6b0c` (giantswarm/mcp-go#2); dropped by the move to upstream v1.4.0, which carries the same change and its test
 
 ## Change
 

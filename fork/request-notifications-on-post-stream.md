@@ -1,7 +1,7 @@
 # Send a request's notifications on its POST stream
 
 - **Status:** carried
-- **Upstream:** none yet; to be sent
+- **Upstream:** [mark3labs/mcp-go#1115](https://github.com/mark3labs/mcp-go/pull/1115), open (draft), from `upstream/request-notifications-on-post-stream`
 - **Our commit:** `7391a80` (giantswarm/mcp-go#3)
 
 ## Change
