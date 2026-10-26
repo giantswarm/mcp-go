@@ -1,7 +1,7 @@
 # Bound the POST body the HTTP transports read
 
 - **Status:** carried
-- **Upstream:** none yet; to be sent. mcp-go through v1.3.0 is affected by CVE-2026-108859 and no upstream release fixes it
+- **Upstream:** [mark3labs/mcp-go#1092](https://github.com/mark3labs/mcp-go/pull/1092) (third-party, tracked by [#1107](https://github.com/mark3labs/mcp-go/issues/1107)), open; it bounds the Streamable HTTP server only, with the same `DefaultMaxRequestBodyBytes` and `WithMaxRequestBodyBytes`. The SSE bound (`WithSSEMaxRequestBodyBytes`) has no upstream change yet; it goes up as a follow-up once #1092 merges. mcp-go through v1.4.0 is affected by CVE-2026-108859 ([GHSA-c673-ppxx-9wvj](https://github.com/advisories/GHSA-c673-ppxx-9wvj))
 - **Our commit:** the squash commit of this change on `giantswarm`; the code is the upstream-ready commit `fix(server): bound the POST body the HTTP transports read`
 
 ## Change
