@@ -7,10 +7,11 @@ differ from upstream?**
 
 Tracking (this fork has issues disabled): [giantswarm/muster#1405](https://github.com/giantswarm/muster/issues/1405).
 A carried patch is one upstream-ready commit on this fork with its ledger file in `fork/`, pushed as an
-`upstream/<slug>` branch on this repository and queued as a row on
-[giantswarm/giantswarm#37742](https://github.com/giantswarm/giantswarm/issues/37742). A human decides what goes upstream to mark3labs/mcp-go and opens it; an agent
-never opens, comments on, reviews or closes a pull request or issue on the upstream repository. Once a human has
-opened one, its ledger file names that pull request.
+`upstream/<slug>` branch on this repository; until it is opened upstream, its ledger file's **Upstream** reads "to
+file — prepared in the fork: branch `upstream/<slug>`". The maintainers review the prepared branches in batches,
+decide what goes upstream to mark3labs/mcp-go and open it; an agent never opens, comments on, reviews or closes a
+pull request or issue on the upstream repository. Once a human has opened one, its ledger file names that pull
+request.
 
 ## Branches
 
